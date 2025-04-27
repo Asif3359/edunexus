@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Support\Facades\Log;
 
 class RegisteredUserController extends Controller
 {
@@ -28,31 +29,72 @@ class RegisteredUserController extends Controller
      *
      * @throws \Illuminate\Validation\ValidationException
      */
+    // public function store(Request $request): \Illuminate\Http\JsonResponse
+    // {
+    //     $request->validate([
+    //         'name' => 'required|string|max:255',
+    //         'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
+    //         'password' => ['required', Rules\Password::defaults()],
+    //         'role' => 'required|in:student,teacher,admin',
+    //         'Location' => 'required|in:Dhaka,Rajsahi,Khulna',
+    //     ]);
+
+    //     $user = User::create([
+    //         'name' => $request->name,
+    //         'email' => $request->email,
+    //         'password' => Hash::make($request->password),
+    //         'role' => $request->role,
+    //     ]);
+
+    //     event(new Registered($user));
+
+    //     Auth::login($user);
+
+    //     // return to_route('dashboard');
+    //     return response()->json([
+    //         'message' => 'User successfully registered',
+    //         'user' => $user,
+    //         'token' => $user->createToken('edunexus')->plainTextToken, // You may want to return a token for authentication
+    //     ]);
+    // }
+
     public function store(Request $request): \Illuminate\Http\JsonResponse
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
-            'password' => ['required', Rules\Password::defaults()],
-            'role' => 'required|in:student,teacher,admin',
-        ]);
+        {
+            Log::info('Location:', ['location' => $request->Location]);
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
+                'password' => ['required', Rules\Password::defaults()],
+                'role' => 'required|in:student,teacher,admin',
+                'Location' => 'required|in:Dhaka,Rajsahi,Khulna',
+            ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => $request->role,
-        ]);
+            // Select connection based on Location
+            $connection = match ($request->Location) {
+                'Dhaka' => 'dhaka',
+                'Khulna' => 'khulna',
+                'Rajsahi' => 'rajsahi',
+                default => 'mysql', // fallback if needed
+            };
 
-        event(new Registered($user));
+            // Insert into selected database
+            $user = (new User)->setConnection($connection)->create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'role' => $request->role,
+                'Location' => $request->Location,
+            ]);
 
-        Auth::login($user);
+            event(new Registered($user));
 
-        // return to_route('dashboard');
-        return response()->json([
-            'message' => 'User successfully registered',
-            'user' => $user,
-            'token' => $user->createToken('edunexus')->plainTextToken, // You may want to return a token for authentication
-        ]);
-    }
+            Auth::login($user);
+
+            return response()->json([
+                'message' => 'User successfully registered',
+                'user' => $user,
+                'token' => $user->createToken('edunexus')->plainTextToken,
+            ]);
+        }
+
 }
