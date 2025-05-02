@@ -1,11 +1,11 @@
 <?php
-
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -18,11 +18,16 @@ class User extends Authenticatable
      *
      * @var list<string>
      */
-    protected $fillable = [
+    protected $primaryKey = 'user_id';
+    public $incrementing  = true;  // or false if it's not auto-incrementing
+    protected $keyType    = 'int'; // or 'string' if it's a UUID
+    protected $fillable   = [
+        'user_id',
         'name',
         'email',
         'password',
-        'role', // ✅ Add this line
+        'role',     // ✅ Add this line
+        'Location', // ✅ Add this line
     ];
 
     /**
@@ -44,7 +49,8 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'password'          => 'hashed',
         ];
     }
+
 }

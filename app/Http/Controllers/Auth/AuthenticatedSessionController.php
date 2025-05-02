@@ -11,6 +11,13 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules;
+use App\Models\User;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -31,34 +38,64 @@ class AuthenticatedSessionController extends Controller
     public function store(LoginRequest $request) : JsonResponse
         // Validate the request
     {
-            $request->validate([
-                'email' => 'required|email',
-                'password' => 'required',
-            ]);
-        
-            if (!Auth::attempt($request->only('email', 'password'))) {
-                return response()->json(['message' => 'Invalid credentials'], 401);
-            }
-        
-            $user = Auth::user();
-            $token = $user->createToken('edunexus')->plainTextToken;
-        
-            return response()->json([
-                'token' => $token,
-                'user' => $user,
-            ]);
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+            'Location' => 'required|in:Dhaka,Rajsahi,Khulna',
+        ]);
+
+        // Determine the connection based on the location
+        $connectionMap = [
+            'Dhaka' => 'dhaka',
+            'Khulna' => 'khulna',
+            'Rajsahi' => 'rajsahi',
+        ];
+
+        $connection = $connectionMap[$request->Location];
+
+        $user = (new User)->setConnection($connection)->where('email', $request->email)->first();
+
+        if (! $user || ! Hash::check($request->password, $user->password)) {
+        return response()->json(['message' => 'Invalid credentials'], 401);
+        }
+
+        \Log::debug("message", ['user' => $user]);
+
+        // This now works correctly after setting $primaryKey
+        $user = User::on($connection)->find($user->user_id);
+
+        if (!$user) {
+        return response()->json(['message' => 'User not found for token creation'], 500);
+        }
+
+        Auth::login($user);
+
+        $token = $user->createToken('edunexus')->plainTextToken;
+
+        return response()->json([
+            'message' => 'User successfully logged in',
+            'token' => $token,
+            'user' => $user,
+        ]);
+
     }
+
+
+
 
     /**
      * Destroy an authenticated session.
      */
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(Request $request): JsonResponse
     {
-        Auth::guard('web')->logout();
+        \Log::debug("message", ['request' => $request]);
+        $user = $request->user();
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        if ($user && $user->currentAccessToken()) {
+            $user->currentAccessToken()->delete(); // delete the token from database
+            return response()->json(['message' => 'Logged out successfully']);
+        }
 
-        return redirect('/');
+        return response()->json(['message' => 'Unauthenticated'], 401);
     }
 }
