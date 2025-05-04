@@ -35,6 +35,9 @@ Route::middleware('guest')->group(function () {
         ->name('password.store');
 
     Route::post('/save-profile', [PrimaryProfileSetupController::class, 'store']);
+    Route::post('/update-profile', [PrimaryProfileSetupController::class, 'update']);
+
+    Route::get('/user/profile/{userId}', [PrimaryProfileSetupController::class, 'show']);
 });
 
 Route::middleware('auth')->group(function () {
@@ -64,4 +67,5 @@ Route::middleware('auth')->group(function () {
 // Route::middleware('auth:sanctum')->group(function () {
 //     Route::post('/save-profile', [PrimaryProfileSetupController::class, 'store']);
 // });
+
 
