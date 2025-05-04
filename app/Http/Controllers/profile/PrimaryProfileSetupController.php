@@ -1,0 +1,154 @@
+<?php
+
+namespace App\Http\Controllers\profile;
+use App\Http\Controllers\Controller;
+
+use Illuminate\Http\Request;
+use App\Models\User;
+use App\Models\Skill;
+use App\Models\Interest;
+use App\Models\SocialLink;
+use App\Models\Education;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+
+class PrimaryProfileSetupController extends Controller
+{
+    public function store(Request $request): JsonResponse
+    {
+        // Validate request
+        $validated = $request->validate([
+            'user_id' => 'required|integer',
+            'userName' => 'required|string',
+            'userEmail' => 'required|email',
+            'Location' => 'required|string|in:Dhaka,Rajsahi,Khulna',
+            'skills' => 'required|array|min:1',
+            'interests' => 'required|array|min:1',
+            'socialLinks' => 'required|array|min:1',
+            'education' => 'required|array|min:1',
+            'education.*.degree' => 'required|string',
+            'education.*.institution' => 'required|string',
+            'education.*.year' => 'required|integer|min:1900|max:' . (date('Y') + 5),
+        ]);
+
+        try {
+            // Switch database
+            $connection = strtolower($validated['Location']);
+            if (!array_key_exists($connection, config('database.connections'))) {
+                throw new \Exception("Invalid database location");
+            }
+
+            Config::set('database.default', $connection);
+            DB::purge($connection);
+            DB::reconnect($connection);
+
+            // Find or create user
+            $user = User::firstOrCreate(
+                ['user_id' => $validated['user_id']],
+                [
+                    'name' => $validated['userName'],
+                    'email' => $validated['userEmail'],
+                    'role' => $request->input('userRole', 'student'),
+                    'Location' => $validated['Location'],
+                    'password' => bcrypt(Str::random(16)), // Temporary password
+                ]
+            );
+
+            // Process relationships
+            $this->syncSkills($user, $validated['skills']);
+            $this->syncInterests($user, $validated['interests']);
+            $this->syncSocialLinks($user, $validated['socialLinks']);
+            $this->syncEducation($user, $validated['education']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Profile saved successfully',
+                'user_id' => $user->user_id
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Profile save failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request' => $request->all()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Profile save failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    private function syncSkills(User $user, array $skills): void
+    {
+        $skillIds = [];
+        foreach ($skills as $skill) {
+            if (!empty(trim($skill))) {
+                $skillModel = Skill::firstOrCreate(['skill_name' => trim($skill)]);
+                $skillIds[] = $skillModel->id; // Changed from SkillID to id
+            }
+        }
+        $user->skills()->sync($skillIds);
+    }
+
+    private function syncInterests(User $user, array $interests): void
+    {
+        $interestIds = [];
+        foreach ($interests as $interest) {
+            if (!empty(trim($interest))) {
+                $interestModel = Interest::firstOrCreate(['interest_name' => trim($interest)]);
+                $interestIds[] = $interestModel->id; // Changed from InterestID to id
+            }
+        }
+        $user->interests()->sync($interestIds);
+    }
+
+    private function syncSocialLinks(User $user, array $links): void
+    {
+        $linkIds = [];
+        foreach ($links as $link) {
+            if (!empty(trim($link))) {
+                $linkModel = SocialLink::firstOrCreate(['social_link' => trim($link)]);
+                $linkIds[] = $linkModel->id; // Changed from SocialLinkID to id
+            }
+        }
+        $user->socialLinks()->sync($linkIds);
+    }
+
+    private function syncEducation(User $user, array $education): void
+    {
+        $educationIds = [];
+        foreach ($education as $edu) {
+            if (!empty($edu['degree']) && !empty($edu['institution'])) {
+                $education = Education::create([
+                    'degree' => $edu['degree'],
+                    'institution' => $edu['institution'],
+                    'year' => $this->parseYear($edu['year'] ?? null),
+                    'description' => $edu['description'] ?? null,
+                ]);
+                $educationIds[] = $education->id; // Changed from EducationID to id
+            }
+        }
+        $user->educations()->sync($educationIds);
+    }
+
+    private function parseYear($year): ?int
+    {
+        if (empty($year)) return null;
+
+        if (is_numeric($year)) {
+            return (int) $year;
+        }
+
+        if (preg_match('/(\d{4})/', $year, $matches)) {
+            return (int) $matches[1];
+        }
+
+        return null;
+    }
+}

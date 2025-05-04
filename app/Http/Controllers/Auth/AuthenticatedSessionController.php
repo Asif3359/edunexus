@@ -59,8 +59,6 @@ class AuthenticatedSessionController extends Controller
         return response()->json(['message' => 'Invalid credentials'], 401);
         }
 
-        \Log::debug("message", ['user' => $user]);
-
         // This now works correctly after setting $primaryKey
         $user = User::on($connection)->find($user->user_id);
 

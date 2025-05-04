@@ -7,6 +7,11 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use App\Models\Skill;
+use App\Models\Interest;
+use App\Models\SocialLink;
+use App\Models\Education;
 
 class User extends Authenticatable
 {
@@ -52,5 +57,26 @@ class User extends Authenticatable
             'password'          => 'hashed',
         ];
     }
+    // Define relationships
+    public function skills()
+    {
+        return $this->belongsToMany(Skill::class, 'user_skills', 'user_id', 'skill_id');
+    }
+
+    public function interests()
+    {
+        return $this->belongsToMany(Interest::class, 'user_interests', 'user_id', 'interest_id');
+    }
+
+    public function socialLinks()
+    {
+        return $this->belongsToMany(SocialLink::class, 'user_social_links', 'user_id', 'social_link_id');
+    }
+
+    public function educations()
+    {
+        return $this->belongsToMany(Education::class, 'user_educations', 'user_id', 'education_id');
+    }
+
 
 }
