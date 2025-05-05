@@ -194,7 +194,7 @@ class PrimaryProfileSetupController extends Controller
             DB::purge($connection);
             DB::reconnect($connection);
 
-            $user = User::with(['skills', 'interests', 'socialLinks', 'educations'])
+            $user = User::with(['skills', 'interests', 'socialLinks', 'educations', 'studentProfile'])
                 ->where('user_id', $userId)
                 ->first();
 
@@ -235,6 +235,9 @@ class PrimaryProfileSetupController extends Controller
             'userName' => 'required|string',
             'userEmail' => 'required|email',
             'Location' => 'required|string|in:Dhaka,Rajsahi,Khulna',
+            'profile_picture' =>'required|string',
+            'mobile' => 'required|string',
+            'bio' => 'required|string',
             'skills' => 'required|array|min:1',
             'interests' => 'required|array|min:1',
             'socialLinks' => 'required|array|min:1',
@@ -275,6 +278,8 @@ class PrimaryProfileSetupController extends Controller
             ]);
 
             // Append relationships without detaching old ones
+            $this->appendStudentProfile($user, $validated['profile_picture'], $validated['mobile'], $validated['bio']);
+
             $this->appendSkills($user, $validated['skills']);
             $this->appendInterests($user, $validated['interests']);
             $this->appendSocialLinks($user, $validated['socialLinks']);
@@ -351,6 +356,20 @@ class PrimaryProfileSetupController extends Controller
                 $user->educations()->syncWithoutDetaching([$educationModel->id]);
             }
         }
+    }
+
+    private function appendStudentProfile(User $user, string $profile_picture, string $mobile, string $bio): void
+    {
+        // Assuming you have a StudentProfile model
+        $studentProfile = $user->studentProfile()->firstOrCreate([
+            'student_id' => $user->user_id,
+        ]);
+
+        $studentProfile->update([
+            'profile_picture' => $profile_picture,
+            'mobile' => $mobile,
+            'bio' => $bio,
+        ]);
     }
 
 }

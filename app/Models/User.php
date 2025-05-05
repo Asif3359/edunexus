@@ -12,6 +12,8 @@ use App\Models\Skill;
 use App\Models\Interest;
 use App\Models\SocialLink;
 use App\Models\Education;
+use App\Models\StudentProfile;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class User extends Authenticatable
 {
@@ -58,6 +60,12 @@ class User extends Authenticatable
         ];
     }
     // Define relationships
+    public function studentProfile(): HasOne
+    {
+        return $this->hasOne(StudentProfile::class, 'student_id', 'user_id');
+    }
+
+
     public function skills()
     {
         return $this->belongsToMany(Skill::class, 'user_skills', 'user_id', 'skill_id');
