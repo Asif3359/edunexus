@@ -35,9 +35,9 @@ Route::middleware('guest')->group(function () {
         ->name('password.store');
 
     Route::post('/save-profile', [PrimaryProfileSetupController::class, 'store']);
-    Route::post('/update-profile', [PrimaryProfileSetupController::class, 'update']);
+    Route::post('/student/profile/update', [PrimaryProfileSetupController::class, 'update']);
 
-    Route::get('/user/profile/{userId}', [PrimaryProfileSetupController::class, 'show']);
+    Route::get('/student/profile/{userId}', [PrimaryProfileSetupController::class, 'show']);
 });
 
 Route::middleware('auth')->group(function () {
