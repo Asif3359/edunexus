@@ -13,6 +13,7 @@ use App\Models\Interest;
 use App\Models\SocialLink;
 use App\Models\Education;
 use App\Models\StudentProfile;
+use App\Models\TeacherProfile;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class User extends Authenticatable
@@ -64,7 +65,10 @@ class User extends Authenticatable
     {
         return $this->hasOne(StudentProfile::class, 'student_id', 'user_id');
     }
-
+    public function teacherProfile(): HasOne
+    {
+        return $this->hasOne(TeacherProfile::class, 'teacher_id', 'user_id');
+    }
 
     public function skills()
     {

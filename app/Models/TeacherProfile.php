@@ -4,16 +4,19 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-class StudentProfile extends Model
+class TeacherProfile extends Model
 {
-    protected $primaryKey = 'student_id';
+    protected $primaryKey = 'teacher_id';
     // teacher_id
     public $incrementing = false;
     protected $keyType = 'int';
 
     protected $fillable = [
-        'student_id',
+        'teacher_id',
         'profile_picture',
         'mobile',
         'bio',
@@ -21,6 +24,6 @@ class StudentProfile extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'student_id', 'user_id');
+        return $this->belongsTo(User::class, 'teacher_id', 'user_id');
     }
 }

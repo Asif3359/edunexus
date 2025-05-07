@@ -10,6 +10,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\profile\PrimaryProfileSetupController;
+use App\Http\Controllers\profile\TeachersPrimaryProfileController;
 
 Route::middleware('guest')->group(function () {
     Route::get('register', [RegisteredUserController::class, 'create'])
@@ -35,9 +36,13 @@ Route::middleware('guest')->group(function () {
         ->name('password.store');
 
     Route::post('/save-profile', [PrimaryProfileSetupController::class, 'store']);
+
     Route::post('/student/profile/update', [PrimaryProfileSetupController::class, 'update']);
 
+    Route::post('/teacher/profile/update', [TeachersPrimaryProfileController::class, 'update']);
+
     Route::get('/student/profile/{userId}', [PrimaryProfileSetupController::class, 'show']);
+    Route::get('/teacher/profile/{userId}', [TeachersPrimaryProfileController::class, 'show']);
 });
 
 Route::middleware('auth')->group(function () {
