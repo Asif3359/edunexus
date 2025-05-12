@@ -11,6 +11,7 @@ use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\profile\PrimaryProfileSetupController;
 use App\Http\Controllers\profile\TeachersPrimaryProfileController;
+use App\Http\Controllers\course\coursecontroller;
 
 Route::middleware('guest')->group(function () {
     Route::get('register', [RegisteredUserController::class, 'create'])
@@ -43,6 +44,16 @@ Route::middleware('guest')->group(function () {
 
     Route::get('/student/profile/{userId}', [PrimaryProfileSetupController::class, 'show']);
     Route::get('/teacher/profile/{userId}', [TeachersPrimaryProfileController::class, 'show']);
+
+    Route::post('/teacher/create-course', [coursecontroller::class, 'store']);
+    Route::get('/courses', [CourseController::class, 'index']);
+    Route::get('/course/{id}', [CourseController::class, 'show']);
+
+    Route::post('/modules', [CourseController::class, 'addModule']);
+    Route::get('/courses/{courseId}/modules', [CourseController::class, 'getModules']);
+
+
+
 });
 
 Route::middleware('auth')->group(function () {

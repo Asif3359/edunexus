@@ -14,7 +14,10 @@ use App\Models\SocialLink;
 use App\Models\Education;
 use App\Models\StudentProfile;
 use App\Models\TeacherProfile;
+use App\Models\Course;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class User extends Authenticatable
 {
@@ -88,6 +91,11 @@ class User extends Authenticatable
     public function educations()
     {
         return $this->belongsToMany(Education::class, 'user_educations', 'user_id', 'education_id');
+    }
+
+    public function courses(): HasMany
+    {
+        return $this->hasMany(Course::class, 'teacher_id', 'user_id');
     }
 
 
