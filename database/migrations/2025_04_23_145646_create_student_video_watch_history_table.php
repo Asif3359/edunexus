@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('student_video_watch_history', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('student_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('student_id')->references('user_id')->on('users')->constrained('users')->onDelete('cascade');
             $table->foreignId('videos_id')->constrained('videos')->onDelete('cascade');
             $table->dateTime('watched_at');
             $table->timestamps();

@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('subscriptions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('teacher_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('teacher_id')->references('user_id')->on('users')->constrained('users')->onDelete('cascade');
             $table->string('plan_name', 50);
             $table->decimal('price', 10, 2);
             $table->dateTime('start_date');

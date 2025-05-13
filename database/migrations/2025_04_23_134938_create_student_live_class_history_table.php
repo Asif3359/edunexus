@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('student_live_class_history', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('student_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('student_id')->references('user_id')->on('users')->constrained('users')->onDelete('cascade');
             $table->foreignId('live_class_id')->constrained('live_classes')->onDelete('cascade');
             $table->dateTime('join_time');
             $table->timestamps();

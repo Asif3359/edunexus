@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('ratings', function (Blueprint $table) {
             $table->id();
             $table->foreignId('course_id')->constrained('courses')->onDelete('cascade');
-            $table->foreignId('student_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('student_id')->references('user_id')->on('users')->constrained('users')->onDelete('cascade');
             $table->integer('rating')->check(function($column) {
                 return $column->between(1, 5);
             });

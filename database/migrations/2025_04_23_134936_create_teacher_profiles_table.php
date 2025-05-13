@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('teacher_profiles', function (Blueprint $table) {
-            $table->foreignId('teacher_id')->primary()->constrained('users')->onDelete('cascade');
+            $table->foreignId('teacher_id')->primary()->references('user_id')->on('users')->constrained('users')->onDelete('cascade');
             $table->text('profile_picture')->nullable();
             $table->string('mobile', 15)->nullable();
             $table->text('bio')->nullable();

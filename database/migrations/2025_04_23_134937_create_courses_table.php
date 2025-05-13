@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('title', 255);
             $table->text('description')->nullable();
             $table->decimal('price', 10, 2);
-            $table->foreignId('teacher_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('teacher_id')->references('user_id')->on('users')->constrained('users')->onDelete('cascade');
             $table->timestamps();
         });
     }
