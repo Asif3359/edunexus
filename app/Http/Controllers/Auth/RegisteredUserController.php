@@ -41,21 +41,30 @@ class RegisteredUserController extends Controller
             ]);
 
             // Select connection based on Location
-            $connection = match ($request->Location) {
-                'Dhaka' => 'dhaka',
-                'Khulna' => 'khulna',
-                'Rajsahi' => 'rajsahi',
-                default => 'mysql', // fallback if needed
-            };
+            // $connection = match ($request->Location) {
+            //     'Dhaka' => 'dhaka',
+            //     'Khulna' => 'khulna',
+            //     'Rajsahi' => 'rajsahi',
+            //     default => 'mysql', // fallback if needed
+            // };
 
             // Insert into selected database
-            $user = (new User)->setConnection($connection)->create([
+            // $user = (new User)->setConnection($connection)->create([
+            //     'name' => $request->name,
+            //     'email' => $request->email,
+            //     'password' => Hash::make($request->password),
+            //     'role' => $request->role,
+            //     'Location' => $request->Location,
+            // ]);
+
+            $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
                 'role' => $request->role,
                 'Location' => $request->Location,
             ]);
+
 
             event(new Registered($user));
 
