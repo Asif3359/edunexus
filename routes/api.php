@@ -51,6 +51,12 @@ Route::middleware('guest')->group(function () {
 
     Route::post('/modules', [CourseController::class, 'addModule']);
     Route::get('/courses/{courseId}/modules', [CourseController::class, 'getModules']);
+    Route::get('/modules/{moduleId}', [CourseController::class, 'getModuleContent']);
+
+    Route::post('/videos', [CourseController::class, 'addVideo']);
+    Route::post('/live-classes', [CourseController::class, 'addLiveClass']);
+
+    Route::get('/scheduled-classes/{userID}', [CourseController::class, 'getScheduledClass']);
 
 
 

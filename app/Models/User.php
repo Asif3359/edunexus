@@ -98,5 +98,20 @@ class User extends Authenticatable
         return $this->hasMany(Course::class, 'teacher_id', 'user_id');
     }
 
+    public function liveClasses(): HasMany
+    {
+        return $this->hasMany(LiveClass::class, 'teacher_id', 'user_id');
+    }
+
+    public function modules(): HasMany
+    {
+        return $this->hasMany(Module::class, 'teacher_id', 'user_id');
+    }
+
+    public function videos(): HasMany
+    {
+        return $this->hasMany(Video::class, 'teacher_id', 'user_id');
+    }
+
 
 }

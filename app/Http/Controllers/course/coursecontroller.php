@@ -7,7 +7,9 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use App\Models\User;
 use App\Models\Course;
+use App\Models\LiveClass;
 use App\Models\Module;
+use App\Models\Video;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Config;
@@ -23,7 +25,7 @@ class CourseController extends Controller
 {
     public function store(Request $request): JsonResponse
     {
-        \Log::debug("Create Course Request", ['request' => $request->all()]);
+        Log::debug("Create Course Request", ['request' => $request->all()]);
 
         // Validate request
         $validated = $request->validate([
@@ -185,7 +187,7 @@ class CourseController extends Controller
                 'message' => 'Course not found',
             ], 404);
         } catch (\Exception $e) {
-            \Log::error('Failed to fetch course', [
+            Log::error('Failed to fetch course', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -201,7 +203,7 @@ class CourseController extends Controller
     public function addModule(Request $request): JsonResponse
     {
 
-        \Log::debug("Add Module Request", ['request' => $request->all()]);
+        Log::debug("Add Module Request", ['request' => $request->all()]);
        // Step 1: Validate input (including location)
         $validated = $request->validate([
             'location' => 'required|string|in:Dhaka,Rajsahi,Khulna',
@@ -280,4 +282,277 @@ class CourseController extends Controller
         ]);
     }
 
+    public function getModuleContent(Request $request, $moduleId): JsonResponse
+    {
+        // Validate location
+        $request->validate([
+            'location' => 'required|string|in:Dhaka,Rajsahi,Khulna',
+        ]);
+
+        $location = strtolower($request->location);
+
+        if (!array_key_exists($location, config('database.connections'))) {
+            return response()->json(['error' => 'Invalid database location.'], 400);
+        }
+
+        // Switch DB connection
+        Config::set('database.default', $location);
+        DB::purge($location);
+        DB::reconnect($location);
+
+        // Check if module exists
+        $moduleExists = DB::connection($location)->table('modules')->where('id', $moduleId)->exists();
+
+        if (!$moduleExists) {
+            return response()->json(['error' => 'Module not found in selected location.'], 404);
+        }
+
+        // Fetch module content
+        $moduleContent = Module::on($location)
+            ->where('id', $moduleId)
+            ->with('course')
+            ->with('videos')
+            ->with('liveClasses')
+            ->first();
+
+        return response()->json([
+            'success' => true,
+            'module' => $moduleContent
+        ]);
+    }
+
+    public function addVideo(Request $request): JsonResponse
+    {
+        // Validate location
+        $request->validate([
+            'location' => 'required|string|in:Dhaka,Rajsahi,Khulna',
+        ]);
+
+        $location = strtolower($request->location);
+
+        if (!array_key_exists($location, config('database.connections'))) {
+            return response()->json(['error' => 'Invalid database location.'], 400);
+        }
+
+        // Switch DB connection
+        Config::set('database.default', $location);
+        DB::purge($location);
+        DB::reconnect($location);
+
+        // Validate input
+        $validated = $request->validate([
+            'module_id' => 'required|integer',
+            'title' => 'required|string|max:255',
+            'video_url' => 'required|url',
+            'position' => 'required|integer',
+        ]);
+
+        // Check if module exists
+        $moduleExists = DB::connection($location)->table('modules')->where('id', $validated['module_id'])->exists();
+
+        if (!$moduleExists) {
+            return response()->json(['error' => 'Module not found in selected location.'], 404);
+        }
+
+        // Create video
+        $video = Video::on($location)->create([
+            'module_id' => $validated['module_id'],
+            'title' => $validated['title'],
+            'video_url' => $validated['video_url'],
+            'position' => $validated['position'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Video added successfully',
+            'video' => $video
+        ], 201);
+    }
+
+    public function addLiveClass(Request $request): JsonResponse
+    {
+        // Validate location
+        $request->validate([
+            'location' => 'required|string|in:Dhaka,Rajsahi,Khulna',
+        ]);
+
+        $location = strtolower($request->location);
+
+        if (!array_key_exists($location, config('database.connections'))) {
+            return response()->json(['error' => 'Invalid database location.'], 400);
+        }
+
+        // Switch DB connection
+        Config::set('database.default', $location);
+        DB::purge($location);
+        DB::reconnect($location);
+
+        // Validate input
+        $validated = $request->validate([
+            'module_id' => 'required|integer',
+            'title' => 'required|string|max:255',
+            'link' => 'required|url',
+            'duration' => 'required|integer',
+            'schedule' => 'required|date',
+            'location' => 'required|string|in:Dhaka,Rajsahi,Khulna',
+        ]);
+
+        // Check if module exists
+        $moduleExists = DB::connection($location)->table('modules')->where('id', $validated['module_id'])->exists();
+
+        if (!$moduleExists) {
+            return response()->json(['error' => 'Module not found in selected location.'], 404);
+        }
+
+        // Create live class
+        $liveClass = LiveClass::on($location)->create([
+            'module_id' => $validated['module_id'],
+            'title' => $validated['title'],
+            'link' => $validated['link'],
+            'duration' => $validated['duration'],
+            'schedule' => $validated['schedule'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Live class added successfully',
+            'live_class' => $liveClass
+        ], 201);
+    }
+
+    public function getScheduledClass(Request $request, $userID): JsonResponse
+    {
+        // Validate location
+        $request->validate([
+            'location' => 'required|string|in:Dhaka,Rajsahi,Khulna',
+        ]);
+
+        $location = strtolower($request->location);
+
+        if (!array_key_exists($location, config('database.connections'))) {
+            return response()->json(['error' => 'Invalid database location.'], 400);
+        }
+
+        // Switch DB connection
+        Config::set('database.default', $location);
+        DB::purge($location);
+        DB::reconnect($location);
+
+        // Get user
+        $user = User::on($location)->where('user_id', $userID)->first();
+
+        if (!$user) {
+            return response()->json(['error' => 'User not found in selected location.'], 404);
+        }
+
+        // Get teacher's courses
+        $teacherCourses = Course::on($location)
+            ->where('teacher_id', $user->user_id)
+            ->pluck('id');
+
+        // Get modules from teacher's courses
+        $teacherModules = Module::on($location)
+            ->whereIn('course_id', $teacherCourses)
+            ->pluck('id');
+
+        // Fetch upcoming live classes for teacher's modules
+        $scheduledClasses = LiveClass::on($location)
+            ->whereIn('module_id', $teacherModules)
+            ->where('schedule', '>', now())
+            ->with(['module.course']) // Eager load module and course
+            ->orderBy('schedule', 'asc')
+            ->get();
+
+        // Map the response to include course and module titles
+        $result = $scheduledClasses->map(function ($class) {
+            return [
+                'id' => $class->id,
+                'title' => $class->title,
+                'link' => $class->link,
+                'duration' => $class->duration,
+                'schedule' => $class->schedule,
+                'module_id' => $class->module_id,
+                'module_title' => $class->module ? $class->module->title : null,
+                'course_id' => $class->module && $class->module->course ? $class->module->course->id : null,
+                'course_title' => $class->module && $class->module->course ? $class->module->course->title : null,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'scheduled_classes' => $result
+        ]);
+    }
+
+    public function getLiveClass(Request $request, $classId): JsonResponse
+    {
+        // Validate location
+        $request->validate([
+            'location' => 'required|string|in:Dhaka,Rajsahi,Khulna',
+        ]);
+
+        $location = strtolower($request->location);
+
+        if (!array_key_exists($location, config('database.connections'))) {
+            return response()->json(['error' => 'Invalid database location.'], 400);
+        }
+
+        // Switch DB connection
+        Config::set('database.default', $location);
+        DB::purge($location);
+        DB::reconnect($location);
+
+        // Check if live class exists
+        $liveClassExists = DB::connection($location)->table('live_classes')->where('id', $classId)->exists();
+
+        if (!$liveClassExists) {
+            return response()->json(['error' => 'Live class not found in selected location.'], 404);
+        }
+
+        // Fetch live class
+        $liveClass = LiveClass::on($location)
+            ->where('id', $classId)
+            ->first();
+
+        return response()->json([
+            'success' => true,
+            'live_class' => $liveClass
+        ]);
+    }
+
+    public function getLiveClassSchedule(Request $request, $userId): JsonResponse
+    {
+        // Validate location
+        $request->validate([
+            'location' => 'required|string|in:Dhaka,Rajsahi,Khulna',
+        ]);
+
+        $location = strtolower($request->location);
+
+        if (!array_key_exists($location, config('database.connections'))) {
+            return response()->json(['error' => 'Invalid database location.'], 400);
+        }
+
+        // Switch DB connection
+        Config::set('database.default', $location);
+        DB::purge($location);
+        DB::reconnect($location);
+
+        // Check if user exists
+        $userExists = DB::connection($location)->table('users')->where('id', $userId)->exists();
+
+        if (!$userExists) {
+            return response()->json(['error' => 'User not found in selected location.'], 404);
+        }
+
+        // Fetch live class schedule
+        $liveClassSchedule = LiveClass::on($location)
+            ->where('user_id', $userId)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'live_class_schedule' => $liveClassSchedule
+        ]);
+    }
 }

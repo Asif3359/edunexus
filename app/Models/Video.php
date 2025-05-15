@@ -20,4 +20,15 @@ class Video extends Model
     {
         return $this->belongsTo(Module::class);
     }
+
+    public function teacher()
+    {
+        return $this->belongsTo(User::class, 'teacher_id');
+    }
+
+    public function course()
+    {
+        return $this->belongsTo(Course::class, 'course_id');
+    }
+
 }
