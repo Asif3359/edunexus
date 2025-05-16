@@ -15,6 +15,10 @@ use App\Models\Skill;
 use App\Models\Interest;
 use App\Models\SocialLink;
 use App\Models\Education;
+use App\Models\Experience;
+use App\Models\Subscription;
+use Stripe\Stripe;
+use Stripe\PaymentIntent;
 
 class TeachersPrimaryProfileController extends Controller
 {
@@ -157,7 +161,7 @@ class TeachersPrimaryProfileController extends Controller
         }
     }
 
-        private function parseYear($year): ?int
+    private function parseYear($year): ?int
     {
         if (empty($year)) return null;
 
@@ -236,6 +240,105 @@ class TeachersPrimaryProfileController extends Controller
             'mobile' => $mobile,
             'bio' => $bio,
         ]);
+    }
+
+
+
+
+    public function apply(Request $request):JsonResponse
+    {
+        try {
+            $request->validate([
+                'userId' => 'required|exists:users,id',
+                'experiences' => 'required|array',
+                'experiences.*.organization' => 'required|string',
+                'experiences.*.role' => 'required|string',
+                'experiences.*.duration' => 'required|string',
+                'experiences.*.description' => 'nullable|string',
+                'subscription' => 'required|array',
+                'subscription.plan_name' => 'required|string',
+                'subscription.price' => 'required|numeric',
+                'subscription.start_date' => 'required|date',
+                'subscription.end_date' => 'required|date|after:subscription.start_date',
+            ]);
+
+            DB::beginTransaction();
+
+            // Update user role to teacher
+            $user = User::findOrFail($request->userId);
+            $user->role = 'teacher';
+            $user->save();
+
+            // Create experiences
+            foreach ($request->experiences as $exp) {
+                $experience = Experience::create([
+                    'organization' => $exp['organization'],
+                    'role' => $exp['role'],
+                    'duration' => $exp['duration'],
+                    'description' => $exp['description'] ?? null,
+                ]);
+
+                // Attach experience to user
+                $user->experiences()->attach($experience->id);
+            }
+
+            // Create subscription
+            Subscription::create([
+                'teacher_id' => $user->id,
+                'plan_name' => $request->subscription['plan_name'],
+                'price' => $request->subscription['price'],
+                'start_date' => $request->subscription['start_date'],
+                'end_date' => $request->subscription['end_date'],
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Teacher application submitted successfully',
+                'user' => $user->load('experiences'),
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Teacher application failed: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to submit teacher application',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function createPaymentIntent(Request $request):JsonResponse
+    {
+        try {
+            $request->validate([
+                'amount' => 'required|numeric|min:1',
+                'currency' => 'required|string|size:3',
+            ]);
+
+            // Initialize Stripe with the secret key from config
+            Stripe::setApiKey(config('services.stripe.secret'));
+
+            // Create PaymentIntent
+            $paymentIntent = PaymentIntent::create([
+                'amount' => $request->amount,
+                'currency' => $request->currency,
+                'automatic_payment_methods' => [
+                    'enabled' => true,
+                ],
+            ]);
+
+            return response()->json([
+                'clientSecret' => $paymentIntent->client_secret,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Payment intent creation failed: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to create payment intent',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
 }

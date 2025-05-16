@@ -113,5 +113,15 @@ class User extends Authenticatable
         return $this->hasMany(Video::class, 'teacher_id', 'user_id');
     }
 
+    public function experiences()
+    {
+        return $this->belongsToMany(Experience::class, 'user_experiences', 'user_id', 'experience_id');
+    }
+
+    public function subscriptions()
+    {
+        return $this->hasMany(Subscription::class, 'teacher_id', 'user_id');
+    }
+
 
 }

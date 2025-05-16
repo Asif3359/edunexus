@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\profile\PrimaryProfileSetupController;
 use App\Http\Controllers\profile\TeachersPrimaryProfileController;
 use App\Http\Controllers\course\coursecontroller;
+use App\Http\Controllers\PaymentController;
 
 Route::middleware('guest')->group(function () {
     Route::get('register', [RegisteredUserController::class, 'create'])
@@ -41,6 +42,10 @@ Route::middleware('guest')->group(function () {
     Route::post('/student/profile/update', [PrimaryProfileSetupController::class, 'update']);
 
     Route::post('/teacher/profile/update', [TeachersPrimaryProfileController::class, 'update']);
+
+    Route::post('/create-payment-intent', [PaymentController::class, 'createPaymentIntent']);
+    Route::post('/apply-teacher', [PaymentController::class, 'applyForTeacher']);
+    Route::post('/verify-payment', [PaymentController::class, 'verifyPayment']);
 
     Route::get('/student/profile/{userId}', [PrimaryProfileSetupController::class, 'show']);
     Route::get('/teacher/profile/{userId}', [TeachersPrimaryProfileController::class, 'show']);
