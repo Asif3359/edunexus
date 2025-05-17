@@ -64,9 +64,5 @@ class StudentProfile extends Model
     {
         return $this->hasMany(SocialLink::class, 'student_id', 'user_id');
     }
-    public function teacher(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'teacher_id', 'user_id');
-    }
 
 }

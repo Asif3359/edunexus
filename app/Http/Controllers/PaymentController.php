@@ -9,9 +9,11 @@ use Stripe\PaymentIntent;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Models\Experience;
+use App\Models\StudentProfile;
 use App\Models\Subscription;
 use App\Models\UserExperiences;
 use Illuminate\Support\Facades\Config;
+use App\Models\TeacherProfile;
 
 class PaymentController extends Controller
 {
@@ -118,9 +120,18 @@ class PaymentController extends Controller
                 'price' => $paymentIntent->amount / 100,
                 'start_date' => now(),
                 'end_date' => now()->addDays(60),
-                ]);
+            ]);
 
-                Log::debug("experiences inserted " . $user->user_id);
+            // Copy data from StudentProfile to TeacherProfile
+            $studentProfile = StudentProfile::where('student_id', $user->user_id)->first();
+            if ($studentProfile) {
+                TeacherProfile::create([
+                    'teacher_id' => $user->user_id,
+                    'profile_picture' => $studentProfile->profile_picture,
+                    'mobile' => $studentProfile->mobile,
+                    'bio' => $studentProfile->bio,
+                ]);
+            }
 
             return response()->json([
                 'message' => 'Teacher application submitted successfully',

@@ -26,4 +26,18 @@ class TeacherProfile extends Model
     {
         return $this->belongsTo(User::class, 'teacher_id', 'user_id');
     }
+
+    public function studentProfile(): HasOne
+    {
+        return $this->hasOne(StudentProfile::class, 'teacher_id', 'teacher_id');
+    }
+
+    public function teacherProfile(): HasOne
+    {
+        return $this->hasOne(TeacherProfile::class, 'teacher_id', 'teacher_id');
+    }
+
+
+
+
 }
