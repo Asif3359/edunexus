@@ -124,7 +124,7 @@ class PaymentController extends Controller
 
             return response()->json([
                 'message' => 'Teacher application submitted successfully',
-                'user' => $user
+                'user' => $user,
             ], 201);
 
         } catch (\Exception $e) {
