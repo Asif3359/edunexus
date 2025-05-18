@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\profile\PrimaryProfileSetupController;
 use App\Http\Controllers\profile\TeachersPrimaryProfileController;
 use App\Http\Controllers\course\coursecontroller;
+use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\PaymentController;
 
 Route::middleware('guest')->group(function () {
@@ -51,7 +52,7 @@ Route::middleware('guest')->group(function () {
     Route::get('/teacher/profile/{userId}', [TeachersPrimaryProfileController::class, 'show']);
 
     Route::post('/teacher/create-course', [coursecontroller::class, 'store']);
-    Route::get('/courses', [CourseController::class, 'index']);
+    Route::get('/courses/teacher/{userId}', [CourseController::class, 'index']);
     Route::get('/course/{id}', [CourseController::class, 'show']);
 
     Route::post('/modules', [CourseController::class, 'addModule']);
@@ -62,6 +63,24 @@ Route::middleware('guest')->group(function () {
     Route::post('/live-classes', [CourseController::class, 'addLiveClass']);
 
     Route::get('/scheduled-classes/{userID}', [CourseController::class, 'getScheduledClass']);
+
+
+    Route::get('/courses/top-rated', [CourseController::class, 'topRated']);
+    Route::get('/courses/top-selling', [CourseController::class, 'topSelling']);
+    Route::get('/courses/suggested', [CourseController::class, 'suggested']);
+
+
+    Route::get('/courses/all', [CourseController::class, 'allCourses']);
+    Route::get('/courses/categories', [CourseController::class, 'categories']);
+
+    Route::get('/courses/{location}/{id}', [CourseController::class, 'daynamicCourse']);
+
+    Route::post('/enrollments', [EnrollmentController::class, 'store']);
+    Route::get('/enrollments', [EnrollmentController::class, 'index']);
+    Route::get('/enrollments/check/{courseId}', [EnrollmentController::class, 'checkEnrollment']);
+
+
+    Route::get('/courses/full-course/{courseId}/{location}', [CourseController::class, 'fullCourse']);
 
 
 

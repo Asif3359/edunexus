@@ -15,8 +15,10 @@ return new class extends Migration
             $table->id();
             $table->foreignId('student_id')->references('user_id')->on('users')->constrained('users')->onDelete('cascade');
             $table->foreignId('course_id')->constrained('courses')->onDelete('cascade');
+            $table->foreignId('teacher_id')->references('user_id')->on('users')->constrained('users')->onDelete('cascade');
             $table->dateTime('enroll_date');
             $table->decimal('paid_amount', 10, 2);
+            $table->string('location');
             $table->timestamps();
         });
     }

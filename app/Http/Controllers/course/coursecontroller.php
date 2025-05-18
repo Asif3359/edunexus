@@ -10,6 +10,8 @@ use App\Models\Course;
 use App\Models\LiveClass;
 use App\Models\Module;
 use App\Models\Video;
+use App\Models\Rating;
+use App\Models\Enrollment;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Config;
@@ -35,6 +37,7 @@ class CourseController extends Controller
             'userEmail'   => 'required|email',
             'Location'    => 'required|string|in:Dhaka,Rajsahi,Khulna',
             'title'       => 'required|string|max:255',
+            'category'    => 'required|string|in:Development,Business,"Finance & Accounting","IT & Software","Office Productivity","Personal Development",Design,Marketing,Lifestyle,"Photography & Video","Health & Fitness",Music,"Teaching & Academics"',
             'description' => 'required|string',
             'thumbnail'   => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'price'       => 'required|numeric|min:0',
@@ -106,7 +109,7 @@ class CourseController extends Controller
             ], 500);
         }
     }
-    public function index(Request $request): JsonResponse
+    public function index(Request $request,$user_id): JsonResponse
     {
         try {
             // Validate location input
@@ -128,6 +131,7 @@ class CourseController extends Controller
             $courses = Course::with(['teacher' => function($query) {
                     $query->select('user_id', 'name', 'email');
                 }])
+                ->where('teacher_id', $user_id)
                 ->orderBy('created_at', 'desc')
                 ->get();
 
@@ -555,5 +559,326 @@ class CourseController extends Controller
             'success' => true,
             'live_class_schedule' => $liveClassSchedule
         ]);
+    }
+
+    protected $connections = ['dhaka', 'khulna', 'rajsahi'];
+
+    public function topRated()
+    {
+        $allCourses = collect();
+
+        foreach ($this->connections as $connection) {
+            try {
+                $courses = Course::on($connection)
+                    ->with(['teacher', 'modules.videos'])
+                    ->addSelect([
+                        'average_rating' => \App\Models\Rating::on($connection)
+                            ->selectRaw('AVG(rating)')
+                            ->whereColumn('course_id', 'courses.id')
+                    ])
+                    ->orderBy('average_rating', 'desc')
+                    ->limit(5)
+                    ->get()
+                    ->map(function ($course) use ($connection) {
+                        $formatted = $this->formatCourse($course);
+                        $formatted['location'] = ucfirst($connection);
+                        $formatted['rating'] = round($course->average_rating ?? 0, 1);
+                        return $formatted;
+                    });
+
+                $allCourses = $allCourses->merge($courses);
+            } catch (\Exception $e) {
+                // Log error and continue with next connection
+                Log::error("Error fetching top rated courses from {$connection}: " . $e->getMessage());
+                continue;
+            }
+        }
+
+        return response()->json($allCourses->sortByDesc('rating')->take(5)->values());
+    }
+
+    public function topSelling()
+    {
+        $allCourses = collect();
+
+        foreach ($this->connections as $connection) {
+            try {
+                $courses = Course::on($connection)
+                    ->with(['teacher', 'modules.videos'])
+                    ->addSelect([
+                        'enrollments_count' => Enrollment::on($connection)
+                            ->selectRaw('COUNT(*)')
+                            ->whereColumn('course_id', 'courses.id')
+                    ])
+                    ->orderBy('enrollments_count', 'desc')
+                    ->limit(5)
+                    ->get()
+                    ->map(function ($course) use ($connection) {
+                        $formatted = $this->formatCourse($course);
+                        $formatted['location'] = ucfirst($connection);
+                        $formatted['sellCount'] = $course->enrollments_count ?? 0;
+                        return $formatted;
+                    });
+
+                $allCourses = $allCourses->merge($courses);
+            } catch (\Exception $e) {
+                Log::error("Error fetching top selling courses from {$connection}: " . $e->getMessage());
+                continue;
+            }
+        }
+
+        return response()->json($allCourses->sortByDesc('sellCount')->take(5)->values());
+    }
+
+    public function suggested(Request $request)
+    {
+        $allCourses = collect();
+
+        foreach ($this->connections as $connection) {
+            $courses = Course::on($connection)
+                ->with(['teacher', 'modules.videos'])
+                ->inRandomOrder()
+                ->limit(2) // Get fewer from each to have variety
+                ->get()
+                ->map(function ($course) use ($connection) {
+                    $formatted = $this->formatCourse($course);
+                    $formatted['location'] = ucfirst($connection);
+                    return $formatted;
+                });
+
+            $allCourses = $allCourses->merge($courses);
+        }
+
+        // Shuffle and take 5
+        $suggestedCourses = $allCourses->shuffle()->take(5)->values();
+
+        return response()->json($suggestedCourses);
+    }
+
+    public function allCourses(Request $request)
+    {
+        $allCourses = collect();
+
+        foreach ($this->connections as $connection) {
+            try {
+                $courses = Course::on($connection)
+                    ->with(['teacher', 'modules.videos'])
+                    ->addSelect([
+                        'average_rating' => Rating::on($connection)
+                            ->selectRaw('AVG(rating)')
+                            ->whereColumn('course_id', 'courses.id'),
+                        'enrollments_count' => Enrollment::on($connection)
+                            ->selectRaw('COUNT(*)')
+                            ->whereColumn('course_id', 'courses.id')
+                    ])
+                    ->get()
+                    ->map(function ($course) use ($connection) {
+                        return $this->formatCourse($course, $connection);
+                    });
+
+                $allCourses = $allCourses->merge($courses);
+            } catch (\Exception $e) {
+                Log::error("Error fetching courses from {$connection}: " . $e->getMessage());
+                continue;
+            }
+        }
+
+        return response()->json($allCourses->shuffle()->values());
+    }
+
+    public function categories()
+    {
+        $allCategories = collect();
+
+        foreach ($this->connections as $connection) {
+            try {
+                $categories = Course::on($connection)
+                    ->distinct()
+                    ->pluck('category')
+                    ->values();
+
+                $allCategories = $allCategories->merge($categories);
+            } catch (\Exception $e) {
+                Log::error("Error fetching categories from {$connection}: " . $e->getMessage());
+                continue;
+            }
+        }
+
+        $uniqueCategories = $allCategories->unique()->values();
+
+        return response()->json($uniqueCategories);
+    }
+
+    public function daynamicCourse($location, $id)
+    {
+        $location = strtolower($location);
+        if (!in_array($location, $this->connections)) {
+            return response()->json(['error' => 'Invalid location'], 400);
+        }
+
+        try {
+            $course = Course::on($location)
+                ->with(['teacher', 'modules.videos'])
+                ->addSelect([
+                    'average_rating' => Rating::on($location)
+                        ->selectRaw('AVG(rating)')
+                        ->whereColumn('course_id', 'courses.id'),
+                    'enrollments_count' => Enrollment::on($location)
+                        ->selectRaw('COUNT(*)')
+                        ->whereColumn('course_id', 'courses.id')
+                ])
+                ->find($id);
+
+            if (!$course) {
+                return response()->json(['error' => 'Course not found'], 404);
+            }
+
+            return response()->json($this->formatCourseDetails($course, $location));
+        } catch (\Exception $e) {
+            Log::error("Error fetching course from {$location}: " . $e->getMessage());
+            return response()->json(['error' => 'Server error'], 500);
+        }
+    }
+
+    private function formatCourseDetails($course, $connection)
+    {
+        return [
+            'id' => $course->id,
+            'title' => $course->title,
+            'description' => $course->description,
+            'category' => $course->category,
+            'teacher_id' => $course->teacher_id,
+            'instructor' => $course->teacher->name,
+            'email' => $course->teacher->email,
+            'price' => $course->price,
+            'rating' => round($course->average_rating ?? 0, 1),
+            'enrollments' => $course->enrollments_count ?? 0,
+            'duration' => $this->calculateDurationforDaynamic($course->modules),
+            'thumbnail' => $course->thumbnail,
+            'location' => ucfirst($connection),
+            'modules' => $course->modules->map(function ($module) {
+                return [
+                    'title' => $module->title,
+                    'videos' => $module->videos->map(function ($video) {
+                        return [
+                            'title' => $video->title,
+                            'url' => $video->video_url,
+                            'duration' => $video->duration,
+                        ];
+                    }),
+                    'liveClasses' => $module->liveClasses->map(function ($liveClass) {
+                        return [
+                            'title' => $liveClass->title,
+                            'link' => $liveClass->link,
+                            'duration' => $liveClass->duration,
+                            'schedule' => $liveClass->schedule,
+                        ];
+                    }),
+                ];
+            }),
+        ];
+    }
+
+    private function calculateDurationforDaynamic($modules)
+    {
+        $totalMinutes = $modules->sum(function ($module) {
+            return $module->videos->sum('duration');
+        });
+
+        $hours = floor($totalMinutes / 60);
+        $minutes = $totalMinutes % 60;
+
+        return $hours > 0 ? "{$hours}h {$minutes}m" : "{$minutes}m";
+    }
+
+    private function formatCourse($course)
+    {
+        $firstVideoUrl = optional(optional($course->modules->first())->videos->first())->video_url ?? '';
+
+        return [
+            'id' => $course->id,
+            'title' => $course->title,
+            'description' => $course->description,
+            'price' => $course->price,
+            'thumbnail' => $course->thumbnail,
+            'category' => $course->category,
+            'instructor' => $course->teacher->name,
+            'rating' => round($course->ratings_avg_rating ?? 0, 1),
+            'sellCount' => $course->enrollments_count ?? 0,
+            'modules' => [
+                [
+                    'videos' => [
+                        [
+                            'url' => $firstVideoUrl
+                        ]
+                    ]
+                ]
+            ]
+        ];
+    }
+    private function calculateDuration($modules)
+    {
+        if (!$modules) return '0 hours';
+
+        $totalMinutes = 0;
+        foreach ($modules as $module) {
+            if ($module->videos) {
+                foreach ($module->videos as $video) {
+                    // Assuming each video has a duration field
+                    $totalMinutes += $video->duration ?? 0;
+                }
+            }
+        }
+
+        $hours = floor($totalMinutes / 60);
+        $minutes = $totalMinutes % 60;
+
+        if ($hours > 0) {
+            return "{$hours} hour" . ($hours > 1 ? 's' : '') .
+                   ($minutes > 0 ? " {$minutes} min" : '');
+        }
+
+        return "{$minutes} min";
+    }
+
+    public function fullCourse($courseId, $location)
+    {
+        try {
+
+            $location = strtolower($location);
+
+
+            Config::set('database.default', $location);
+            DB::purge($location);
+            DB::reconnect($location);
+
+            $course = Course::on($location)
+                ->with(['modules.videos', 'modules.liveClasses'])
+                ->findOrFail($courseId);
+
+            Log::info('Course fetch successful:', [
+                'courseId' => $courseId,
+                'location' => $location,
+                'course_exists' => !is_null($course)
+            ]);
+
+            return response()->json($course);
+
+        } catch (\Exception $e) {
+            Log::error('Course fetch error:', [
+                'error' => $e->getMessage(),
+                'courseId' => $courseId,
+                'location' => $location ?? 'not set',
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'message' => 'Failed to fetch course details',
+                'error' => $e->getMessage(),
+                'debug_info' => [
+                    'courseId' => $courseId,
+                    'location' => $location ?? 'not set',
+                ]
+            ], 500);
+        }
     }
 }
