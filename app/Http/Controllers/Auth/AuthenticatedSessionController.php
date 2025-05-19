@@ -38,16 +38,12 @@ class AuthenticatedSessionController extends Controller
             'Location' => 'required|in:Dhaka,Rajsahi,Khulna',
         ]);
 
-        // Determine the connection based on the location
-        $connectionMap = [
-            'Dhaka' => 'dhaka',
-            'Khulna' => 'khulna',
-            'Rajsahi' => 'rajsahi',
-        ];
+        $connection = strtolower($request->Location);
 
-        $connection = $connectionMap[$request->Location];
 
-        $user = (new User)->setConnection($connection)->where('email', $request->email)->first();
+
+        $user = User::on($connection)->where('email', $request->email)->first();
+
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
         return response()->json(['message' => 'Invalid credentials'], 401);
@@ -70,6 +66,31 @@ class AuthenticatedSessionController extends Controller
             'user' => $user,
         ]);
 
+    }
+
+    public function locations($email): JsonResponse
+    {
+        try {
+            $user = User::where('email', $email)->first();
+
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'location' => $user->Location
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error retrieving location'
+            ], 500);
+        }
     }
 
 

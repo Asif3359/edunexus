@@ -171,42 +171,48 @@ class EnrollmentController extends Controller
             ], 500);
         }
     }
-
-    /**
-     * Check if user is enrolled in a specific course.
-     */
-    public function checkEnrollment($courseId, Request $request )
+    public function checkEnrollment($courseId, Request $request)
     {
-        try {
-            $student_id = $request->query('student_id') ;
-            $location = $request->query('location');
+        $locations = ['dhaka', 'rajsahi', 'khulna'];
 
-            $connection = strtolower($location);
-            if (!array_key_exists($connection, config('database.connections'))) {
-                return response()->json([
-                    'message' => 'Invalid database location'
-                ], 400);
+        try {
+            $student_id = $request->query('student_id');
+            $teacherEmail = $request->query('teacherEmail'); // optional filter
+
+            foreach ($locations as $location) {
+
+                $query = Enrollment::on($location)
+                    ->where('student_id', $student_id)
+                    ->where('course_id', $courseId);
+
+                if ($teacherEmail) {
+                    // Optional: Check if the teacher assigned to this enrollment matches
+                    $query->whereHas('teacher', function ($q) use ($teacherEmail) {
+                        $q->where('email', $teacherEmail);
+                    });
+                }
+
+                if ($query->exists()) {
+                    return response()->json([
+                        'is_enrolled' => true,
+                        'location' => $location
+                    ]);
+                }
             }
 
-            Config::set('database.default', $connection);
-            DB::purge($connection);
-            DB::reconnect($connection);
-
-            $isEnrolled = Enrollment::on($connection)
-                ->where('student_id', $student_id)
-                ->where('course_id', $courseId)
-                ->exists();
-
             return response()->json([
-                'is_enrolled' => $isEnrolled
-            ]);
+                'is_enrolled' => false,
+                'message' => 'Not enrolled in any location'
+            ], 404);
 
         } catch (\Exception $e) {
-            Log::error('Failed to check enrollment status: ' . $e->getMessage());
+
             return response()->json([
-                'message' => 'Failed to check enrollment status',
+                'message' => 'Server error while checking enrollment',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
+
+
 }

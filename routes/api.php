@@ -73,7 +73,7 @@ Route::middleware('guest')->group(function () {
     Route::get('/courses/all', [CourseController::class, 'allCourses']);
     Route::get('/courses/categories', [CourseController::class, 'categories']);
 
-    Route::get('/courses/{location}/{id}', [CourseController::class, 'daynamicCourse']);
+    Route::get('/courses/{location}/{id}/{teacherEmail}', [CourseController::class, 'daynamicCourse']);
 
     Route::post('/enrollments', [EnrollmentController::class, 'store']);
     Route::get('/enrollments', [EnrollmentController::class, 'index']);
@@ -81,6 +81,9 @@ Route::middleware('guest')->group(function () {
 
 
     Route::get('/courses/full-course/{courseId}/{location}', [CourseController::class, 'fullCourse']);
+
+
+    Route::get('/get-location/{email}', [AuthenticatedSessionController::class, 'locations']);
 
 
 

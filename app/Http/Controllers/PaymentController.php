@@ -76,9 +76,7 @@ class PaymentController extends Controller
             DB::purge($connection);
             DB::reconnect($connection);
 
-            $user = User::where('user_id', $request->userId)->first();
-
-            // Log::debug($user);
+            $user = User::on($connection)->where('user_id', $request->userId)->first();
 
             if (!$user) {
                 throw new \Exception('User not found');
@@ -100,7 +98,7 @@ class PaymentController extends Controller
 
             // now insert into experiences table
             foreach ($request->experiences as $experienceData) {
-                $experience = Experience::create([
+                $experience = Experience::on($connection)->create([
                     // 'user_id' => $user->user_id,
                     'organization' => $experienceData['organization'],
                     'role' => $experienceData['role'],
@@ -113,7 +111,7 @@ class PaymentController extends Controller
             }
 
             // now insert into subscriptions table
-            Subscription::create([
+            Subscription::on($connection)->create([
                 'teacher_id' => $user->user_id,
                 'plan_name' => 'Basic Plan',
                 'stripe_payment_id' => $paymentIntentId,
@@ -123,9 +121,9 @@ class PaymentController extends Controller
             ]);
 
             // Copy data from StudentProfile to TeacherProfile
-            $studentProfile = StudentProfile::where('student_id', $user->user_id)->first();
+            $studentProfile = StudentProfile::on($connection)->where('student_id', $user->user_id)->first();
             if ($studentProfile) {
-                TeacherProfile::create([
+                TeacherProfile::on($connection)->create([
                     'teacher_id' => $user->user_id,
                     'profile_picture' => $studentProfile->profile_picture,
                     'mobile' => $studentProfile->mobile,

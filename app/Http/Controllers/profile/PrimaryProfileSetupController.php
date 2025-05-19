@@ -249,6 +249,8 @@ class PrimaryProfileSetupController extends Controller
 
         ]);
 
+
+
         try {
             // Switch database
             $connection = strtolower($validated['Location']);
@@ -260,8 +262,12 @@ class PrimaryProfileSetupController extends Controller
             DB::purge($connection);
             DB::reconnect($connection);
 
+
+
             // Find the user
-            $user = User::where('user_id', $validated['user_id'])->first();
+            $user = User::on($connection)->where('user_id', $validated['user_id'])->first();
+
+
 
             if (!$user) {
                 return response()->json([

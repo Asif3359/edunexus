@@ -60,11 +60,11 @@ class CourseController extends Controller
             $thumbnailUrl = null;
             if ($request->hasFile('thumbnail')) {
                 $path = $request->file('thumbnail')->store('course-thumbnails', 'public');
-                $thumbnailUrl = Storage::disk('public')->url($path);
+                $thumbnailUrl = asset('storage/' . $path);
             }
 
             // Find or create user
-            $user = User::firstOrCreate(
+            $user = User::on($connection)->firstOrCreate(
                 ['user_id' => $validated['user_id']],
                 [
                     'name'     => $validated['userName'],
@@ -78,7 +78,7 @@ class CourseController extends Controller
             // \Log::debug("thumbnailUrl", ['thumbnailUrl' => $thumbnailUrl]);
 
             // Create course
-            $course = new Course([
+            $course = Course::on($connection)->create([
                 'title'       => $validated['title'],
                 'description' => $validated['description'],
                 'price'       => $validated['price'],
@@ -86,8 +86,6 @@ class CourseController extends Controller
                 'thumbnail'   => $thumbnailUrl,
             ]);
 
-            $course->setConnection($connection);
-            $course->save();
 
             return response()->json([
                 'success' => true,
@@ -709,36 +707,51 @@ class CourseController extends Controller
         return response()->json($uniqueCategories);
     }
 
-    public function daynamicCourse($location, $id)
+    public function daynamicCourse($location, $id, $teacherEmail)
     {
         $location = strtolower($location);
-        if (!in_array($location, $this->connections)) {
+        $availableLocations = ['dhaka', 'rajsahi', 'khulna'];
+
+        if (!in_array($location, $availableLocations)) {
             return response()->json(['error' => 'Invalid location'], 400);
         }
 
-        try {
-            $course = Course::on($location)
-                ->with(['teacher', 'modules.videos'])
-                ->addSelect([
-                    'average_rating' => Rating::on($location)
-                        ->selectRaw('AVG(rating)')
-                        ->whereColumn('course_id', 'courses.id'),
-                    'enrollments_count' => Enrollment::on($location)
-                        ->selectRaw('COUNT(*)')
-                        ->whereColumn('course_id', 'courses.id')
-                ])
-                ->find($id);
+        \Log::debug("Requested ID", ['id' => $id]);
+        \Log::debug("Requested Teacher Email", ['teacher_email' => $teacherEmail]);
 
-            if (!$course) {
-                return response()->json(['error' => 'Course not found'], 404);
+        try {
+            foreach ($availableLocations as $conn) {
+                \Log::debug("Searching in database", ['db' => $conn]);
+
+                $course = Course::on($conn)
+                    ->with(['teacher', 'modules.videos'])
+                    ->where('id', $id)
+                    ->whereHas('teacher', function ($query) use ($teacherEmail) {
+                        $query->where('email', $teacherEmail);
+                    })
+                    ->addSelect([
+                        'average_rating' => Rating::on($conn)
+                            ->selectRaw('AVG(rating)')
+                            ->whereColumn('course_id', 'courses.id'),
+                        'enrollments_count' => Enrollment::on($conn)
+                            ->selectRaw('COUNT(*)')
+                            ->whereColumn('course_id', 'courses.id')
+                    ])
+                    ->first();
+
+                if ($course) {
+                    return response()->json($this->formatCourseDetails($course, $conn));
+                }
             }
 
-            return response()->json($this->formatCourseDetails($course, $location));
+            return response()->json(['error' => 'Course not found in any location'], 404);
+
         } catch (\Exception $e) {
-            Log::error("Error fetching course from {$location}: " . $e->getMessage());
+            \Log::error("Error fetching course: " . $e->getMessage());
             return response()->json(['error' => 'Server error'], 500);
         }
     }
+
 
     private function formatCourseDetails($course, $connection)
     {
@@ -798,6 +811,7 @@ class CourseController extends Controller
         return [
             'id' => $course->id,
             'title' => $course->title,
+            'teacherEmail' => $course->teacher->email,
             'description' => $course->description,
             'price' => $course->price,
             'thumbnail' => $course->thumbnail,

@@ -40,11 +40,14 @@ class RegisteredUserController extends Controller
                 'Location' => 'required|in:Dhaka,Rajsahi,Khulna',
             ]);
 
-            // Select connection based on Location
-            $connection =  strtolower($request->Location);
+            $user = User::where('email', $request->email)->first();
+            if ($user) {
+                return response()->json([
+                    'message' => 'User already exists',
+                ], 400);
+            }
 
-            // Insert into selected database
-            $user = (new User)->setConnection($connection)->create([
+            $defaultDatabaseEntry = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
@@ -52,7 +55,13 @@ class RegisteredUserController extends Controller
                 'Location' => $request->Location,
             ]);
 
-            $user = User::create([
+
+
+            // Select connection based on Location
+            $connection =  strtolower($request->Location);
+
+
+            $user = User::on($connection)->create([
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
