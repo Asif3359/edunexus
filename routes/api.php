@@ -80,7 +80,7 @@ Route::middleware('guest')->group(function () {
     Route::get('/enrollments/check/{courseId}', [EnrollmentController::class, 'checkEnrollment']);
 
 
-    Route::get('/courses/full-course/{courseId}/{location}', [CourseController::class, 'fullCourse']);
+    Route::get('/courses/full-course/{courseId}', [CourseController::class, 'fullCourse']);
 
 
     Route::get('/get-location/{email}', [AuthenticatedSessionController::class, 'locations']);

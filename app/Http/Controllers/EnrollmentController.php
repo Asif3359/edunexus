@@ -203,7 +203,7 @@ class EnrollmentController extends Controller
             return response()->json([
                 'is_enrolled' => false,
                 'message' => 'Not enrolled in any location'
-            ], 404);
+            ]);
 
         } catch (\Exception $e) {
 

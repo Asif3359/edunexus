@@ -855,12 +855,16 @@ class CourseController extends Controller
         return "{$minutes} min";
     }
 
-    public function fullCourse($courseId, $location)
+    public function fullCourse($courseId, Request $request)
     {
         try {
 
-            $location = strtolower($location);
+            $location = strtolower($request->location);
 
+
+
+            Log::debug("Requested Location", ['location' => $location]);
+            Log::debug("Requested Course ID", ['courseId' => $courseId]);
 
             Config::set('database.default', $location);
             DB::purge($location);
@@ -869,12 +873,6 @@ class CourseController extends Controller
             $course = Course::on($location)
                 ->with(['modules.videos', 'modules.liveClasses'])
                 ->findOrFail($courseId);
-
-            Log::info('Course fetch successful:', [
-                'courseId' => $courseId,
-                'location' => $location,
-                'course_exists' => !is_null($course)
-            ]);
 
             return response()->json($course);
 
