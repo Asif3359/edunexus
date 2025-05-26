@@ -14,3 +14,6 @@ Any future date (e.g., 12/34)
 CVC: Any 3 digits
 
 Make sure your backend URL is accessible from the emulator (use your local IP, not localhost)
+
+
+php artisan serve --host=0.0.0.0 --port=8080
